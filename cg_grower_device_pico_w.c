@@ -282,7 +282,7 @@ void set_get_command_uri(char *uri, const char *device_id, float temp, float moi
 
 uint32_t country = CYW43_COUNTRY_UK;
 char ssid[] = "IoT";
-char password[] = "VeryL0ngPas$wd!2015";
+char password[] = "";
 uint32_t auth = CYW43_AUTH_WPA2_MIXED_PSK;
 const int port = 8085;
 char device_id[] = "0002";
