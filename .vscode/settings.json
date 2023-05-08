@@ -1,0 +1,38 @@
+{
+  // These settings tweaks to the cmake plugin will ensure
+  // that you debug using cortex-debug instead of trying to launch
+  // a Pico binary on the host
+  "cmake.statusbar.advanced": {
+    "debug": {
+      "visibility": "hidden"
+    },
+    "launch": {
+      "visibility": "hidden"
+    },
+    "build": {
+      "visibility": "hidden"
+    },
+    "buildTarget": {
+      "visibility": "hidden"
+    }
+  },
+  "cmake.buildBeforeRun": true,
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  // This may need to be arm-none-eabi-gdb depending on your system
+  // "cortex-debug.gdbPath": "gdb-multiarch",
+  "cortex-debug.gdbPath": "arm-none-eabi-gdb",
+  "cmake.configureEnvironment": {
+    "PICO_SDK_PATH": "C:/tools/rpiPico/pico-sdk"
+  },
+  "cmake.generator": "Ninja",
+  "files.associations": {
+    "cyw43_arch.h": "c",
+    "binary_info.h": "c",
+    "adc.h": "c",
+    "cstdint": "c",
+    "string.h": "c",
+    "type_traits": "c",
+    "http_client.h": "c"
+  },
+  "cmake.configureSettings": {}
+}
