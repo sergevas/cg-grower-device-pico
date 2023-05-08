@@ -1,12 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "pico/cyw43_arch.h"
 #include "pico/binary_info.h"
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
-
-#include "lwip/apps/http_client.h"
 
 #define ADC_PIN_GP26_ADC0 26
 #define ADC_INPUT_0 0
@@ -198,105 +195,9 @@ void read_temperature(float sensor_seq_readings[])
     }
 }
 
-int init_wifi_connection(uint32_t country, const char *ssid, const char *password, uint32_t auth)
-{
-    if (cyw43_arch_init_with_country(country))
-    {
-        printf("Failed to init WiFi with country\n");
-        return 1;
-    }
-    printf("Success init WiFi with country\n");
-    cyw43_arch_enable_sta_mode();
-    if (cyw43_arch_wifi_connect_async(ssid, password, auth))
-    {
-        printf("Failed to establish WiFi connection\n");
-        return 2;
-    }
-}
-
-int setup_wifi_connection()
-{
-    int status = CYW43_LINK_UP + 1;
-    while (status != CYW43_LINK_UP && status != CYW43_LINK_BADAUTH)
-    {
-        int new_status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
-        if (new_status != status)
-        {
-            status = new_status;
-            printf("connect status: %d %d\n", status);
-        }
-    }
-    if (status < 0)
-    {
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-    }
-    else
-    {
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-    }
-    return status;
-}
-
-// HTTP client implementation start
-char buff[1000];
-
-void result(void *arg, httpc_result_t httpc_result, u32_t rx_content_len, u32_t srv_res, err_t err)
-{
-    printf("transfer complete\n");
-    printf("local result=%d\n", httpc_result);
-    printf("http result=%d\n", srv_res);
-    if (httpc_result != HTTPC_RESULT_OK)
-    {
-        printf("Trying to reconnect...\n");
-        setup_wifi_connection();
-    }
-}
-
-err_t headers(httpc_state_t *connection, void *arg, struct pbuf *hdr, u16_t hdr_len, u32_t content_len)
-{
-    printf("headers recieved\n");
-    printf("content length=%d\n", content_len);
-    printf("header length %d\n", hdr_len);
-
-    pbuf_copy_partial(hdr, buff, hdr->tot_len, 0);
-    printf("headers \n");
-    printf("%s", buff);
-    return ERR_OK;
-}
-
-err_t body(void *arg, struct altcp_pcb *conn, struct pbuf *p, err_t err)
-{
-    printf("body\n");
-    pbuf_copy_partial(p, buff, p->tot_len, 0);
-    pbuf_free(p);
-    printf("%s", buff);
-    return ERR_OK;
-}
-// HTTP client implementation complete
-
-void set_get_command_uri(char *uri, const char *device_id, float temp, float moist, char *pump)
-{
-    // URI example: http://192.168.1.76:8000/cg/gateway/device/grower/0001?tmp=25.01&mst=56.4&pump=off
-    sprintf(uri, "/cg/gateway/device/grower/%s?tmp=%0.2f&mst=%0.2f&pump=%s", device_id, temp, moist, pump);
-}
-
-uint32_t country = CYW43_COUNTRY_UK;
-char ssid[] = "IoT";
-char password[] = "";
-uint32_t auth = CYW43_AUTH_WPA2_MIXED_PSK;
-const int port = 8085;
-char device_id[] = "0002";
-char uri[53];
-
 int main()
 {
     stdio_init_all();
-    init_wifi_connection(country, ssid, password, auth);
-    ip_addr_t ip;
-    IP4_ADDR(&ip, 192, 168, 1, 87);
-    httpc_connection_t settings;
-    settings.result_fn = result;
-    settings.headers_done_fn = headers;
 
     float sensor_readings[SENSOR_READINGS_NUMBER] = {0};
     float soil_moisture_seq[MOVING_AVERAGE_PERIOD] = {0};
@@ -333,32 +234,5 @@ int main()
         temp = get_mean(sensor_readings, &temperature_seq_sum, temperature_seq, &temperature_curr_indx, &is_temperature_seq_filled);
         float soil_moisture_percent = get_moisture_percent(soil_moisture_raw);
         printf("++++++++++ Temperature: %0.2f\n", temp);
-
-        set_get_command_uri(uri, device_id, temp, soil_moisture_percent, pump_state);
-        err_t err = httpc_get_file(
-            &ip,
-            port,
-            uri,
-            &settings,
-            body,
-            NULL,
-            NULL);
-        printf("status %d \n", err);
-        if (err != ERR_OK)
-        {
-            printf("Trying to reconnect...\n");
-            setup_wifi_connection();
-            err_t err = httpc_get_file(
-                &ip,
-                port,
-                uri,
-                &settings,
-                body,
-                NULL,
-                NULL);
-            printf("status %d \n", err);
-        }
-        sleep_ms(30000);
     }
-    return 0;
 }
